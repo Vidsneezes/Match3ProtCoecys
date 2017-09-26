@@ -17,6 +17,7 @@ public class Board  {
     public BoxTile currentTile;
     private BoxTile[] tiles;
     private BoxTile swappedWith;
+    private List<BoxTile> connections;
 
     public void FillBoard()
     {
@@ -32,7 +33,28 @@ public class Board  {
                 newPOs.x = i * boxSize * tilePaddingRight;
                 newPOs.y = j * boxSize * tilePaddingUp;
                 BoxTile sampleJewel = GameObject.Instantiate(prefab_jewel);
-                sampleJewel.Setup(newPOs, new Vector2(i, j));
+                sampleJewel.SetupRandom(newPOs , new Vector2(i, j));
+                sampleJewel.name = "Box " + i + " " + j;
+                SetTile(i, j, sampleJewel);
+            }
+        }
+    }
+
+    public void FillFromMatrix(int[] matrix)
+    {
+        tiles = new BoxTile[width * height];
+        Vector3 startPos = Vector3.zero;
+        for (int i = 0; i < width; i++)
+        {
+            startPos.x = i * boxSize;
+            for (int j = 0; j < height; j++)
+            {
+                startPos.y = j * boxSize;
+                Vector3 newPOs = startPos;
+                newPOs.x = i * boxSize * tilePaddingRight;
+                newPOs.y = j * boxSize * tilePaddingUp;
+                BoxTile sampleJewel = GameObject.Instantiate(prefab_jewel);
+                sampleJewel.Setup(newPOs, new Vector2(i, j),matrix[i+j*width]);
                 sampleJewel.name = "Box " + i + " " + j;
                 SetTile(i, j, sampleJewel);
             }
@@ -120,18 +142,6 @@ public class Board  {
         sideTwo.inPlace = false;
     }
 
-    public void ClearPieces()
-    {
-        bool didHorDisplace = DisplaceHorizontalConnections();
-        bool didVerDisplace = DisplaceVerticalConnections();
-        if (didHorDisplace || didVerDisplace)
-        {
-            ShiftTileUp(currentTile);
-            currentTile.transform.position = new Vector3(currentTile.x, currentTile.y + height * 2);
-            currentTile.RandomizeValue();
-        }
-    }
-
     public bool FlushBoard()
     {
         for (int i = 0; i < tiles.Length; i++)
@@ -152,49 +162,92 @@ public class Board  {
         return allInPlace;
     }
 
+    public void ClearPieces()
+    {
+        ShiftConnections(connections);
+        return;
+    }
+
     public bool ConnectionsExist()
     {
-        List<BoxTile> upCon = PoolUpConnections();
-        List<BoxTile> downCon = PoolDownConnections();
-        List<BoxTile> leftCon = PoolLeftConnections();
-        List<BoxTile> rightCon = PoolRightConnections();
-        if (leftCon.Count + rightCon.Count < 2 && upCon.Count + downCon.Count < 2)
+        connections = CrawlAllConnections();
+        if(connections.Count > 2)
         {
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
-    private bool DisplaceHorizontalConnections()
+    public int GetConnectionsCount()
     {
-        List<BoxTile> connectionOne = PoolLeftConnections();
-        List<BoxTile> connectionTwo = PoolRightConnections();
-        if(connectionOne.Count + connectionTwo.Count < 2)
-        {
-            return false;
-        }
-        ShiftConnections(connectionOne);
-        ShiftConnections(connectionTwo);
-        return true;
+        return connections.Count;
     }
 
-    private bool DisplaceVerticalConnections()
+    private List<BoxTile> CrawlAllConnections()
     {
-        List<BoxTile> connectionOne = PoolUpConnections();
-        List<BoxTile> connectionTwo = PoolDownConnections();
-        if (connectionOne.Count + connectionTwo.Count < 2)
+        List<BoxTile> allConnections = new List<BoxTile>();
+        List<BoxTile> availiableNeighBors = new List<BoxTile>();
+        availiableNeighBors.Add(currentTile);
+        while(availiableNeighBors.Count > 0)
         {
-            return false;
+            BoxTile headTile = availiableNeighBors[0];
+            headTile.inPlace = false;
+            BoxTile neighBor;
+
+            allConnections.Add(headTile);
+
+            if(GetTile(headTile.x,headTile.y-1,out neighBor))
+            {
+                if (headTile.HasSameValue(neighBor))
+                {
+                    if (!allConnections.Contains(neighBor))
+                    {
+                        availiableNeighBors.Add(neighBor);
+                    }
+                }
+            }
+
+            if(GetTile(headTile.x,headTile.y +1,out neighBor))
+            {
+                if (headTile.HasSameValue(neighBor))
+                {
+                    if (!allConnections.Contains(neighBor))
+                    {
+                        availiableNeighBors.Add(neighBor);
+                    }
+                }
+            }
+
+            if (GetTile(headTile.x+1, headTile.y , out neighBor))
+            {
+                if (headTile.HasSameValue(neighBor))
+                {
+                    if (!allConnections.Contains(neighBor))
+                    {
+                        availiableNeighBors.Add(neighBor);
+                    }
+                }
+            }
+
+            if (GetTile(headTile.x - 1, headTile.y, out neighBor))
+            {
+                if (headTile.HasSameValue(neighBor))
+                {
+                    if (!allConnections.Contains(neighBor))
+                    {
+                        availiableNeighBors.Add(neighBor);
+                    }
+                }
+            }
+
+            availiableNeighBors.Remove(headTile);
         }
-  
-        ShiftConnections(connectionOne);
-        ShiftConnections(connectionTwo);
-        return true;
+
+        return allConnections;
     }
 
     private void ShiftConnections(List<BoxTile> connections)
     {
-
         for (int i = 0; i < connections.Count; i++)
         {
             ShiftTileUp(connections[i]);
@@ -205,7 +258,6 @@ public class Board  {
             connections[i].transform.position = new Vector3(connections[i].x, connections[i].y + height * 2);
             connections[i].RandomizeValue();
         }
-
     }
 
     private void ShiftTileUp(BoxTile tile)
@@ -249,86 +301,31 @@ public class Board  {
         return x >= 0 && x < width && y >= 0 && y < height;
     }
 
-    private bool TryMatchAndAdd(List<BoxTile> connections, int x, int y)
+    public int[] GetColorIndexMapping()
     {
-        BoxTile queueTile;
-        if (GetTile(x, y, out queueTile))
+        int[] colorIndexes = new int[width * height];
+        for (int i = 0; i < width; i++)
         {
-            return AddToConnections(connections, queueTile);
-        }
-        return false;
-
-    }
-
-    private bool AddToConnections(List<BoxTile> connections, BoxTile queueTile)
-    {
-        if (currentTile.HasSameValue(queueTile))
-        {
-            connections.Add(queueTile);
-            queueTile.inPlace = false;
-            return true;
-        }
-        return false;
-    }
-
-    private List<BoxTile> PoolLeftConnections()
-    {
-        List<BoxTile> connections = new List<BoxTile>();
-        int startX = currentTile.x;
-        while (startX >= 0)
-        {
-            startX -= 1;
-            if (!TryMatchAndAdd(connections, startX, currentTile.y))
+            for (int j = 0; j < height; j++)
             {
-                break;
+                colorIndexes[i + j * width] = tiles[i + j * width].colorIndex;
             }
         }
-        return connections;
+        return colorIndexes;
     }
 
-    private List<BoxTile> PoolRightConnections()
+    public void DebugColorIndex()
     {
-        List<BoxTile> connections = new List<BoxTile>();
-        int startX = currentTile.x;
-        while (startX < width)
+        string con = "";
+        int[] colorIndexes = GetColorIndexMapping();
+        for (int i = 0; i < height; i++)
         {
-            startX += 1;
-            if (!TryMatchAndAdd(connections, startX, currentTile.y))
+            for (int j = 0; j < width; j++)
             {
-                break;
+                con += colorIndexes[j + i * width];
             }
+            con += "\n";
         }
-        return connections;
+        Debug.Log(con);
     }
-
-    private List<BoxTile> PoolUpConnections()
-    {
-        List<BoxTile> connections = new List<BoxTile>();
-        int startY = currentTile.y;
-        while (startY >= 0)
-        {
-            startY -= 1;
-            if (!TryMatchAndAdd(connections, currentTile.x, startY))
-            {
-                break;
-            }
-        }
-        return connections;
-    }
-
-    private List<BoxTile> PoolDownConnections()
-    {
-        List<BoxTile> connections = new List<BoxTile>();
-        int startY = currentTile.y;
-        while (startY < height)
-        {
-            startY += 1;
-            if (!TryMatchAndAdd(connections, currentTile.x, startY))
-            {
-                break;
-            }
-        }
-        return connections;
-    }
-
 }

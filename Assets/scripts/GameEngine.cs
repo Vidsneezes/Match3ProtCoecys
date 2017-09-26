@@ -1,8 +1,15 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class GameEngine : MonoBehaviour {
+
+    public enum GameMode
+    {
+        LimitMode,
+        HighMode
+    }
 
     public enum GameState
     {
@@ -10,25 +17,67 @@ public class GameEngine : MonoBehaviour {
         CheckMove,
         ReverseMove,
         SolveMove,
-        FlushBoard
+        FlushBoard,
+        WonTimeLimit,
+        GameOver
     }
+
+    public int timeLimit;
+    public int winLimit;
+    public float feelTimer;
 
     public Board gameBoard;
     public GameState gameState;
     public TimedEventPlanner timedEventPlanner;
+    public GameMode gameMode;
+
+    public SceneLoader gameOverHigh;
+    public SceneLoader gameOverLimit;
+
     private bool freeze;
+    private TimedEvent timeLeftEvent;
+    private int score;
+    private bool gameOver;
+    private GameDataProvider gameDataProvider;
 
-
-	// Use this for initialization
-	void Start () {
+    private void Start()
+    {
         timedEventPlanner = new TimedEventPlanner();
+        gameDataProvider = GameObject.FindGameObjectWithTag("GameDataProvider").GetComponent<GameDataProvider>();
+        StartGame();
+    }
+
+    public void StartGame()
+    {
         gameBoard.FillBoard();
-        gameState = GameState.WaitMove;
         freeze = false;
-	}
-	
-	// Update is called once per frame
-	void Update () {
+        gameState = GameState.WaitMove;
+        timeLeftEvent = timedEventPlanner.AddEvent(timeLimit, GameTimeDone);
+        gameOver = false;
+        FillVariables();
+    }
+
+    public void FillVariables()
+    {
+        int gameModeValue;
+        if(gameDataProvider.gameData.TryGetInt(GameData.GAMEMODE,out gameModeValue))
+        {
+            if(gameModeValue == 0)
+            {
+                gameMode = GameMode.LimitMode;
+            }
+            else
+            {
+                gameMode = GameMode.HighMode;
+            }
+        }
+
+        gameDataProvider.gameData.SetInt(GameData.SCORE, 0);
+        gameDataProvider.gameData.SetInt(GameData.TIMELEFT, 0);
+    }
+
+    // Update is called once per frame
+    void Update () {
         timedEventPlanner.StepEvents(Time.deltaTime);
         if (!freeze)
         {
@@ -40,10 +89,46 @@ public class GameEngine : MonoBehaviour {
                 case GameState.SolveMove: SolveMove(); break;
                 case GameState.ReverseMove: ReverseMove();break;
                 case GameState.FlushBoard: FlushBoard();break;
+                case GameState.GameOver: GameOver();break;
+                case GameState.WonTimeLimit: GameLimitWon();break;
             }
         }
 
         CleanFrame();
+        float timeLeftClamp = Mathf.Clamp((timeLimit - timeLeftEvent.GetSeconds()), 0, timeLimit);
+        gameDataProvider.gameData.SetInt(GameData.TIMELEFT, (int)timeLeftClamp);
+    }
+
+    public void GameLimitWon()
+    {
+        gameDataProvider.gameData.SetInt(GameData.GAMECONDITION, 1);
+        gameOverLimit.LoadScene();
+    }
+
+    public void GameOver()
+    {
+        gameDataProvider.gameData.SetInt(GameData.SCORE, score);
+        gameDataProvider.gameData.SetInt(GameData.GAMECONDITION, 0);
+        if (gameMode == GameMode.HighMode)
+        {
+            gameOverHigh.LoadScene();
+        }
+        else if (gameMode == GameMode.LimitMode)
+        {
+            gameOverLimit.LoadScene();
+        }
+    }
+
+    public void IncreaseScore(int amountToDelete)
+    {
+        score += amountToDelete * 100;
+        gameDataProvider.gameData.SetInt(GameData.SCORE, score);
+        gameDataProvider.gameData.SetInt(GameData.SCOREPERCENT, (int)Mathf.Clamp((((float)score / (float)winLimit) * 100), 0, 100));
+    }
+
+    public void GameTimeDone()
+    {
+        gameOver = true;
     }
 
     public void CleanFrame()
@@ -80,8 +165,19 @@ public class GameEngine : MonoBehaviour {
     {
         if (gameBoard.ConnectionsExist())
         {
+            int piecesCount = gameBoard.GetConnectionsCount() + 1;
+            IncreaseScore(piecesCount);
             gameBoard.ClearPieces();
-            SwitchState(GameState.FlushBoard);
+
+            if(score >= winLimit)
+            {
+                SwitchState(GameState.WonTimeLimit);
+            }
+            else
+            {
+                SwitchState(GameState.FlushBoard);
+
+            }
         }
         else
         {
@@ -107,7 +203,11 @@ public class GameEngine : MonoBehaviour {
     {
         freeze = true;
         gameState = newState;
-        timedEventPlanner.AddEvent(0.3f, Unfreeze);
+        timedEventPlanner.AddEvent(feelTimer, Unfreeze);
+        if (gameOver)
+        {
+            gameState = GameState.GameOver;
+        }
     }
 
     private void Unfreeze()
@@ -115,97 +215,4 @@ public class GameEngine : MonoBehaviour {
         freeze = false;
     }
 
-}
-
-public delegate void OnComplete();
-
-public class TimedEventPlanner
-{
-    public List<TimedEvent> timedEvents;
-    public List<TimedEvent> eventsFinished;
-
-
-    public TimedEventPlanner()
-    {
-        timedEvents = new List<TimedEvent>();
-        eventsFinished = new List<TimedEvent>();
-    }
-
-    public void StepEvents(float deltaTime)
-    {
-
-        for (int i = 0; i < timedEvents.Count; i++)
-        {
-            timedEvents[i].Step(deltaTime);
-            if (timedEvents[i].IsFinished)
-            {
-                eventsFinished.Add(timedEvents[i]);
-            }
-        }
-    }
-
-    public void ClearEvents()
-    {
-        for (int i = 0; i < eventsFinished.Count; i++)
-        {
-            timedEvents.Remove(eventsFinished[i]);
-        }
-    }
-
-    public void AddEvent(float time, OnComplete onComp)
-    {
-        TimedEvent tm = new TimedEvent();
-        tm.SetupEvent(time);
-        tm.onComplete += onComp;
-        timedEvents.Add(tm);
-    }
-}
-
-public class TimedEvent
-{
-
-    public float waitTime;
-    public OnComplete onComplete;
-
-    private bool finished;
-    public bool IsFinished
-    {
-        get
-        {
-            return finished;
-        }
-    }
-
-    private float timer;
-
-    public TimedEvent()
-    {
-    }
-
-    public void SetupEvent(float _waitTime)
-    {
-        timer = 0;
-        waitTime = _waitTime;
-        finished = false;
-    }
-
-    public void Step(float deltaStep)
-    {
-        timer += deltaStep;
-        if(timer > waitTime)
-        {
-            Completed();
-        }
-    }
-
-    public void Completed()
-    {
-        finished = true;
-        if(onComplete != null)
-        {
-            onComplete();
-        }
-    }
-
-   
 }

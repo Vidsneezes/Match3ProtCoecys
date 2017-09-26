@@ -8,25 +8,39 @@ public class BoxTile : MonoBehaviour {
     public int y;
     public BoxMask boxMask;
     public bool inPlace;
+    public int colorIndex;
 
     private SpriteRenderer spriteRenderer;
 
-    private Color[] colors = new Color[] { Color.red, Color.blue, Color.green, Color.magenta };
+    private Color[] colors = new Color[] { Color.red, Color.blue, Color.green, Color.magenta, Color.yellow, Color.gray };
 
-	public void Setup(Vector3 worldStartPos, Vector2 normalPosition)
+    public void Setup(Vector3 worldStartPos, Vector2 normalPosition, int _colorIndex)
     {
         x = (int)normalPosition.x;
         y = (int)normalPosition.y;
 
         transform.position = worldStartPos;
         spriteRenderer = GetComponent<SpriteRenderer>();
-        spriteRenderer.color = colors[(int)(Random.Range(0f, 1f) * 4)];
+        colorIndex = _colorIndex;
+        spriteRenderer.color = colors[colorIndex];
+        inPlace = true;
+    }
+
+    public void SetupRandom(Vector3 worldStartPos, Vector2 normalPosition)
+    {
+        x = (int)normalPosition.x;
+        y = (int)normalPosition.y;
+
+        transform.position = worldStartPos;
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        colorIndex = (int)(Random.Range(0f, 1f) * colors.Length);
+        spriteRenderer.color = colors[colorIndex];
         inPlace = true;
     }
 
     public void Step(Vector3 destination)
     {
-        transform.position = Vector3.MoveTowards(transform.position, destination, Time.deltaTime*15);
+        transform.position = Vector3.MoveTowards(transform.position, destination, Time.deltaTime*20);
         if(Vector3.Distance(transform.position, destination) < 0.02f)
         {
             transform.position = destination;
@@ -36,6 +50,7 @@ public class BoxTile : MonoBehaviour {
     
     public bool IsTouched(Vector3 mousePos, out BoxTile activeTile)
     {
+        boxMask.UpdateRect();
         if (boxMask.HasPoint(mousePos))
         {
             activeTile = this;
@@ -57,7 +72,7 @@ public class BoxTile : MonoBehaviour {
 
     public void RandomizeValue()
     {
-        spriteRenderer.color = colors[(int)(Random.Range(0f, 1f) * 4)];
-
+        colorIndex = (int)(Random.Range(0f, 1f) * colors.Length);
+        spriteRenderer.color = colors[colorIndex];
     }
 }

@@ -15,6 +15,11 @@ public class BoxMask : MonoBehaviour {
         return false;
     }
 
+    public void UpdateRect()
+    {
+        rect.position = new Vector2(transform.position.x - rect.width * 0.5f, transform.position.y - rect.height * 0.5f);
+    }
+
     public void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
