@@ -31,9 +31,6 @@ public class GameEngine : MonoBehaviour {
     public TimedEventPlanner timedEventPlanner;
     public GameMode gameMode;
 
-    public SceneLoader gameOverHigh;
-    public SceneLoader gameOverLimit;
-
     private bool freeze;
     private TimedEvent timeLeftEvent;
     private int score;
@@ -102,21 +99,12 @@ public class GameEngine : MonoBehaviour {
     public void GameLimitWon()
     {
         gameDataProvider.gameData.SetInt(GameData.GAMECONDITION, 1);
-        gameOverLimit.LoadScene();
     }
 
     public void GameOver()
     {
         gameDataProvider.gameData.SetInt(GameData.SCORE, score);
         gameDataProvider.gameData.SetInt(GameData.GAMECONDITION, 0);
-        if (gameMode == GameMode.HighMode)
-        {
-            gameOverHigh.LoadScene();
-        }
-        else if (gameMode == GameMode.LimitMode)
-        {
-            gameOverLimit.LoadScene();
-        }
     }
 
     public void IncreaseScore(int amountToDelete)
