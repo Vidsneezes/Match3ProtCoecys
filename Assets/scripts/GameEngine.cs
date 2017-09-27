@@ -15,42 +15,42 @@ public class GameEngine : MonoBehaviour {
 
     public Board gameBoard;
     public GameState gameState;
+    public GameDataProvider gameDataProvider;
+    public bool freeze;
+    public TimedEventPlanner timedEventPlanner;
+    public TimedEvent timeLeft;
 
 	// Use this for initialization
 	void Start () {
         gameState = GameState.WaitMove;
         BeginBoard();
+        gameDataProvider = GameObject.FindObjectOfType<GameDataProvider>();
+        timedEventPlanner = new TimedEventPlanner();
+        freeze = false;
 	}
 
     private void BeginBoard()
     {
-        int[] mat = new int[]
-        {
-            0,0,1,3,4,
-            1,1,2,0,2,
-            2,3,4,1,0,
-            0,3,1,3,0
-        };
-
-        gameBoard.boxSize = 1;
-        gameBoard.width = 5;
-        gameBoard.height = 4;
         gameBoard.prefab_jewel = Resources.Load<BoxTile>("Jewel/prefabs/Jewel");
-        gameBoard.FillFromMatrix(mat);
-
+        gameBoard.FillBoard();
     }
 	
 	// Update is called once per frame
 	void Update () {
-        Vector3 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        switch (gameState)
+        timedEventPlanner.StepEvents(Time.deltaTime);
+        if (!freeze)
         {
-            case GameState.WaitMove:WaitMove(worldPos); break;
-            case GameState.CheckMove: CheckMove(worldPos); break;
-            case GameState.SolveMove:SolveMove(); break;
-            case GameState.ReverseMove:ReverseMove(); break;
-            case GameState.FlushBoard:FlushBoard(); break;
+            Vector3 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            switch (gameState)
+            {
+                case GameState.WaitMove: WaitMove(worldPos); break;
+                case GameState.CheckMove: CheckMove(worldPos); break;
+                case GameState.SolveMove: SolveMove(); break;
+                case GameState.ReverseMove: ReverseMove(); break;
+                case GameState.FlushBoard: FlushBoard(); break;
+            }
         }
+        timedEventPlanner.ClearEvents();
 	}
 
     public void WaitMove(Vector3 worldPos)
@@ -82,6 +82,17 @@ public class GameEngine : MonoBehaviour {
         if (gameBoard.ConnectionsExist())
         {
             gameBoard.ClearPieces();
+            int value;
+            if(gameDataProvider.gameData.TryGetInt(GameData.SCORE,out value))
+            {
+                value += 100;
+            }
+            else
+            {
+                value = 100;
+            }
+            gameDataProvider.gameData.SetInt(GameData.SCORE, value);
+
             SwitchState(GameState.FlushBoard);
         }
         else
@@ -106,6 +117,13 @@ public class GameEngine : MonoBehaviour {
 
     public void SwitchState(GameState newState)
     {
+        freeze = true;
         gameState = newState;
+        timedEventPlanner.AddEvent(0.2f, Unfreeze);
+    }
+
+    public void Unfreeze()
+    {
+        freeze = false;
     }
 }

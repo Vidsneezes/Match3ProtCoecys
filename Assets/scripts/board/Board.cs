@@ -17,6 +17,28 @@ public class Board  {
     private BoxTile swappedWith;
     private List<BoxTile> connections;
 
+    public void FillBoard()
+    {
+        tiles = new BoxTile[width * height];
+        Vector3 startPos = Vector3.zero;
+        for (int i = 0; i < width; i++)
+        {
+            startPos.x = i * boxSize;
+            for (int j = 0; j < height; j++)
+            {
+                startPos.y = j * boxSize;
+                Vector3 tilePosition = startPos;
+                tilePosition.x = i * boxSize;
+                tilePosition.y = j * boxSize;
+                BoxTile sampleJewel = GameObject.Instantiate(prefab_jewel);
+                sampleJewel.Setup(tilePosition, new Vector2(i, j), 0);
+                sampleJewel.RandomizeValue();
+                sampleJewel.name = "Jewel Box " + (i * j);
+                SetTile(i, j, sampleJewel);
+            }
+        }
+    }
+
     public void FillFromMatrix(int[] matrix)
     {
         tiles = new BoxTile[width * height];
