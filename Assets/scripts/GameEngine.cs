@@ -28,12 +28,14 @@ public class GameEngine : MonoBehaviour
         int[] mat =
        {
             0,0,1,3,4,
-            1,1,2,0,2
+            1,1,2,0,2,
+            2,3,4,1,0,
+            0,3,1,3,0
         };
 
         gameBoard.boxSize = 1;
         gameBoard.width = 5;
-        gameBoard.height = 2;
+        gameBoard.height = 4;
         gameBoard.prefab_jewel = Resources.Load<BoxTile>("Jewel/prefabs/Jewel");
         gameBoard.FillFromMatrix(mat);
 
@@ -85,6 +87,7 @@ public class GameEngine : MonoBehaviour
         {
             int piecesCount = gameBoard.GetConnectionsCount() + 1;
             gameBoard.ClearPieces();
+            SwitchState(GameState.FlushBoard);
         }
         else
         {
