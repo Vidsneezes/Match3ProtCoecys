@@ -1,10 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 
-public class GameEngine : MonoBehaviour
-{
+public class GameEngine : MonoBehaviour {
 
     public enum GameState
     {
@@ -18,15 +16,16 @@ public class GameEngine : MonoBehaviour
     public Board gameBoard;
     public GameState gameState;
 
-    private void Start()
-    {
-        StartGame();
-    }
+	// Use this for initialization
+	void Start () {
+        gameState = GameState.WaitMove;
+        BeginBoard();
+	}
 
-    public void StartGame()
+    private void BeginBoard()
     {
-        int[] mat =
-       {
+        int[] mat = new int[]
+        {
             0,0,1,3,4,
             1,1,2,0,2,
             2,3,4,1,0,
@@ -39,33 +38,30 @@ public class GameEngine : MonoBehaviour
         gameBoard.prefab_jewel = Resources.Load<BoxTile>("Jewel/prefabs/Jewel");
         gameBoard.FillFromMatrix(mat);
 
-        gameState = GameState.WaitMove;
     }
-
-    // Update is called once per frame
-    void Update()
-    {
+	
+	// Update is called once per frame
+	void Update () {
         Vector3 worldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         switch (gameState)
         {
-            case GameState.WaitMove: WaitMove(worldPos); break;
+            case GameState.WaitMove:WaitMove(worldPos); break;
             case GameState.CheckMove: CheckMove(worldPos); break;
-            case GameState.SolveMove: SolveMove(); break;
-            case GameState.ReverseMove: ReverseMove(); break;
-            case GameState.FlushBoard: FlushBoard(); break;
+            case GameState.SolveMove:SolveMove(); break;
+            case GameState.ReverseMove:ReverseMove(); break;
+            case GameState.FlushBoard:FlushBoard(); break;
         }
-    }
+	}
 
     public void WaitMove(Vector3 worldPos)
     {
-        if (Input.GetMouseButtonUp(0) || !Input.GetMouseButton(0))
+        if(Input.GetMouseButtonUp(0) || !Input.GetMouseButton(0))
         {
             gameBoard.NotTouched();
         }
 
         if (Input.GetMouseButtonDown(0))
         {
-
             if (gameBoard.TouchedBoard(worldPos))
             {
                 SwitchState(GameState.CheckMove);
@@ -85,7 +81,6 @@ public class GameEngine : MonoBehaviour
     {
         if (gameBoard.ConnectionsExist())
         {
-            int piecesCount = gameBoard.GetConnectionsCount() + 1;
             gameBoard.ClearPieces();
             SwitchState(GameState.FlushBoard);
         }
