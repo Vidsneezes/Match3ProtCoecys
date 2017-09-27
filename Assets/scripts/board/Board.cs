@@ -106,9 +106,72 @@ public class Board  {
         SetTile(siTwo.x, siTwo.y, siTwo);
     }
 
+    public void MetaSwapTiles(BoxTile siOne, BoxTile siTwo)
+    {
+        int freex = siOne.x;
+        siOne.x = siTwo.x;
+        siTwo.x = freex;
+
+        int freey = siOne.y;
+        siOne.y = siTwo.y;
+        siTwo.y = freey;
+
+        SetTile(siOne.x, siOne.y, siOne);
+        SetTile(siTwo.x, siTwo.y, siTwo);
+    }
+
+    public bool FlushBoard()
+    {
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            Vector3 destination = new Vector3(tiles[i].x * boxSize, tiles[i].y * boxSize);
+            tiles[i].Step(destination);
+        }
+
+        bool allInPlace = true;
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            if(tiles[i].inPlace == false)
+            {
+                allInPlace = false;
+                return allInPlace;
+            }
+        }
+        return allInPlace;
+    }
+
     public void ClearPieces()
     {
+        ShiftConnections(connections);
+    }
 
+    private void ShiftConnections(List<BoxTile> connections)
+    {
+        for (int i = 0; i < connections.Count; i++)
+        {
+            ShiftTileUp(connections[i]);
+        }
+
+        for (int i = 0; i < connections.Count; i++)
+        {
+            connections[i].transform.position = new Vector3(connections[i].x, connections[i].y + height * 2);
+            connections[i].inPlace = false;
+            connections[i].RandomizeValue();
+        }
+    }
+
+    private void ShiftTileUp(BoxTile tile)
+    {
+        int tileY = tile.y;
+        while(tileY < height)
+        {
+            tileY += 1;
+            BoxTile topTile;
+            if(GetTile(tile.x, tileY, out topTile))
+            {
+                MetaSwapTiles(tile, topTile);
+            }
+        }
     }
 
     private List<BoxTile> CrawlAllConnections()

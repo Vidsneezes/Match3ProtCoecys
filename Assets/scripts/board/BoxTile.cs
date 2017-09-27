@@ -6,6 +6,7 @@ public class BoxTile : MonoBehaviour {
 
     public int x;
     public int y;
+    public bool inPlace;
     public BoxMask boxMask;
 
     public int colorIndex;
@@ -31,7 +32,17 @@ public class BoxTile : MonoBehaviour {
         colorIndex = _colorIndex;
 
         spriteRenderer.color = colors[colorIndex];
+        inPlace = true;
+    }
 
+    public void Step(Vector3 destination)
+    {
+        transform.position = Vector3.MoveTowards(transform.position, destination, Time.deltaTime * 20);
+        if(Vector3.Distance(transform.position, destination) < 0.02f)
+        {
+            transform.position = destination;
+            inPlace = true;
+        }
     }
 
     public bool IsTouched(Vector3 position, out BoxTile activeTile)
@@ -54,5 +65,11 @@ public class BoxTile : MonoBehaviour {
     public Color GetValue()
     {
         return spriteRenderer.color;
+    }
+
+    public void RandomizeValue()
+    {
+        colorIndex = (int)(Random.Range(0f, 1f) * colors.Length);
+        spriteRenderer.color = colors[colorIndex];
     }
 }
