@@ -11,7 +11,11 @@ public class Board  {
 
     public BoxTile prefab_jewel;
 
+    public BoxTile currentTile;
+
     private BoxTile[] tiles;
+    private BoxTile swappedWith;
+    private List<BoxTile> connections;
 
     public void FillFromMatrix(int[] matrix)
     {
@@ -34,14 +38,72 @@ public class Board  {
         }
     }
 
+    public void NotTouched()
+    {
+        currentTile = null;
+    }
+
     public bool TouchedBoard(Vector3 worldPos)
     {
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            if(tiles[i].IsTouched(worldPos, out currentTile))
+            {
+                return true;
+            }
+        }
+        currentTile = null;
         return false;
     }
 
     public bool CheckSwap(Vector3 worldPos)
     {
+        BoxTile neighBor;
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            if(tiles[i].IsTouched(worldPos, out neighBor))
+            {
+                bool differentTile = neighBor != currentTile;
+                Debug.Log(neighBor);
+                Debug.Log(currentTile);
+
+                bool horCheck = Mathf.Abs(neighBor.x - currentTile.x) <= 1 && Mathf.Abs(neighBor.y - currentTile.y) == 0;
+                bool verCheck = Mathf.Abs(neighBor.y - currentTile.y) <= 1 && Mathf.Abs(neighBor.x - currentTile.x) == 0;
+
+                if(differentTile && (verCheck || horCheck))
+                {
+                    SwapTiles(currentTile, neighBor);
+                    swappedWith = neighBor;
+                    return true;
+                }
+            }
+        }
         return false;
+    }
+
+    public void ReverseSwap()
+    {
+        SwapTiles(currentTile, swappedWith);
+        currentTile = null;
+        swappedWith = null;
+    }
+
+    public void SwapTiles(BoxTile siOne, BoxTile siTwo)
+    {
+        Vector3 freePos = siOne.transform.position;
+        siOne.transform.position = siTwo.transform.position;
+        siTwo.transform.position = freePos;
+
+        int freex = siOne.x;
+        siOne.x = siTwo.x;
+        siTwo.x = freex;
+
+        int freey = siOne.y;
+        siOne.y = siTwo.y;
+        siTwo.y = freey;
+
+        SetTile(siOne.x, siOne.y, siOne);
+        SetTile(siTwo.x, siTwo.y, siTwo);
     }
 
     public void ClearPieces()
@@ -49,14 +111,81 @@ public class Board  {
 
     }
 
+    private List<BoxTile> CrawlAllConnections()
+    {
+        List<BoxTile> allConnections = new List<BoxTile>();
+        List<BoxTile> availiableNeighBors = new List<BoxTile>();
+        availiableNeighBors.Add(currentTile);
+        
+        while(availiableNeighBors.Count > 0)
+        {
+            BoxTile headTile = availiableNeighBors[0];
+            BoxTile neighBor;
+
+            allConnections.Add(headTile);
+
+            if(GetTile(headTile.x, headTile.y -1 , out neighBor))
+            {
+                if (headTile.HasSameValue(neighBor))
+                {
+                    if (!allConnections.Contains(neighBor))
+                    {
+                        availiableNeighBors.Add(neighBor);
+                    }
+                }
+            }
+
+            if (GetTile(headTile.x, headTile.y + 1, out neighBor))
+            {
+                if (headTile.HasSameValue(neighBor))
+                {
+                    if (!allConnections.Contains(neighBor))
+                    {
+                        availiableNeighBors.Add(neighBor);
+                    }
+                }
+            }
+
+            if (GetTile(headTile.x +1 , headTile.y, out neighBor))
+            {
+                if (headTile.HasSameValue(neighBor))
+                {
+                    if (!allConnections.Contains(neighBor))
+                    {
+                        availiableNeighBors.Add(neighBor);
+                    }
+                }
+            }
+
+            if (GetTile(headTile.x - 1, headTile.y , out neighBor))
+            {
+                if (headTile.HasSameValue(neighBor))
+                {
+                    if (!allConnections.Contains(neighBor))
+                    {
+                        availiableNeighBors.Add(neighBor);
+                    }
+                }
+            }
+            availiableNeighBors.Remove(headTile);
+        }
+        return allConnections;
+    }
+
     public bool ConnectionsExist()
     {
+        connections = CrawlAllConnections();
+        if(connections.Count > 2)
+        {
+            return true;
+        }
+
         return false;
     }
 
     public int GetConnectionsCount()
     {
-        return 0;
+        return connections.Count;
     }
 
     public BoxTile SetTile(int x, int y, BoxTile newTile)

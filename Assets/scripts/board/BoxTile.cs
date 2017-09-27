@@ -6,6 +6,7 @@ public class BoxTile : MonoBehaviour {
 
     public int x;
     public int y;
+    public BoxMask boxMask;
 
     public int colorIndex;
     public SpriteRenderer spriteRenderer;
@@ -33,9 +34,21 @@ public class BoxTile : MonoBehaviour {
 
     }
 
+    public bool IsTouched(Vector3 position, out BoxTile activeTile)
+    {
+        boxMask.UpdateRect();
+        if (boxMask.HasPoint(position))
+        {
+            activeTile = this;
+            return true;
+        }
+        activeTile = null;
+        return false;
+    }
+
     public bool HasSameValue(BoxTile boxTile)
     {
-        return colorIndex == boxTile.colorIndex;
+        return boxTile.GetValue().Equals(GetValue());
     }
 
     public Color GetValue()
